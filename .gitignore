@@ -1,0 +1,9 @@
+# ignore
+
+.idea/
+out
+*.iml
+*.csv
+*.classpath
+*.project
+*.html
