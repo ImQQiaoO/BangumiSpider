@@ -51,7 +51,7 @@ public class RankSpider {
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path, StandardCharsets.UTF_8, StandardOpenOption.APPEND)) {
                 bufferedWriter.write(dateFormat.format(date) + "\n");
-                bufferedWriter.write("作品名,作品ID,作品均分,作品评分人数,上映时间,作品原排名,VIB评分人数,VIB均分\n");
+                bufferedWriter.write("作品名,作品ID,作品均分,作品评分人数,上映时间,作品集数,作品原排名,VIB评分人数,VIB均分\n");
             }
         }
 
@@ -113,12 +113,17 @@ public class RankSpider {
             }
             while (rankDateMatcher.find()) {
                 String dateContent = rankDateMatcher.group().replace(" ", "").replace("</p>", "");
+                String epNum;
                 if (dateContent.contains("话")) {
+                    epNum = dateContent.substring(0, dateContent.indexOf("话") + 1);
                     dateContent = dateContent.substring(dateContent.indexOf("/") + 1);
+                } else {
+                    epNum = "--话";
                 }
                 if (dateContent.contains("/")) {
                     dateContent = dateContent.substring(0, dateContent.indexOf("/"));
                 }
+                itemsList.add(epNum);
                 itemsList.add(dateContent);
             }
         }
@@ -126,10 +131,11 @@ public class RankSpider {
         for (Object o : itemsList) {
             System.out.println(o);
         }
-        for (int j = 0; j < itemsList.size() / 8; j++) {
-            RankItemsInfo rankItemsInfo = new RankItemsInfo((int) itemsList.get(j * 8), (int) itemsList.get(j * 8 + 1), (Double) itemsList.get(j * 8 + 2),
-                    (int) itemsList.get(j * 8 + 3), (Double) itemsList.get(j * 8 + 4), (String) itemsList.get(j * 8 + 5), (String) itemsList.get(j * 8 + 6),
-                    (String) itemsList.get(j * 8 + 7));
+        int itemNum = 9;
+        for (int j = 0; j < itemsList.size() / itemNum; j++) {
+            RankItemsInfo rankItemsInfo = new RankItemsInfo((int) itemsList.get(j * itemNum), (int) itemsList.get(j * itemNum + 1), (Double) itemsList.get(j * itemNum + 2),
+                    (int) itemsList.get(j * itemNum + 3), (Double) itemsList.get(j * itemNum + 4), (String) itemsList.get(j * itemNum + 5), (String) itemsList.get(j * itemNum + 6),
+                    (String)itemsList.get(j * itemNum + 7), (String) itemsList.get(j * itemNum + 8));
             rankItemsInfoList.add(rankItemsInfo);
             ArrayList<RankItemsInfo> rankItemsInfoPageList = new ArrayList<>();
             rankItemsInfoPageList.add(rankItemsInfo);
@@ -145,7 +151,7 @@ public class RankSpider {
         try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path, StandardCharsets.UTF_8, StandardOpenOption.APPEND)) {
             for (RankItemsInfo rankItemsInfo : rankItemsInfoPageList) {
                 bufferedWriter.write(rankItemsInfo.getWorkName() + "," + rankItemsInfo.getItemsID() + "," +
-                        rankItemsInfo.getCommonAver() + "," + rankItemsInfo.getCommonScorerNum() + "," + rankItemsInfo.getDate()
+                        rankItemsInfo.getCommonAver() + "," + rankItemsInfo.getCommonScorerNum() + "," + rankItemsInfo.getDate() + ", " + rankItemsInfo.getEpNum()
                         + "," + rankItemsInfo.getRank() + "," + rankItemsInfo.getVIBScorerNum() + "," + rankItemsInfo.getVIBAver() + "\n");
             }
         } catch (IOException ex) {

@@ -8,3 +8,4 @@ out
 *.project
 *.html
 src/Testing.java
+src/WebsiteCopier.java

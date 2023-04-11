@@ -6,12 +6,13 @@ public class RankItemsInfo {
     private double commonAver;
     private String workName;
     private String rank;
+    private String epNum;
     private String date;
 
     public RankItemsInfo() {
     }
 
-    public RankItemsInfo(int itemsID, int VIBScorerNum, double VIBAver, int commonScorerNum, double commonAver, String workName, String rank, String date) {
+    public RankItemsInfo(int itemsID, int VIBScorerNum, double VIBAver, int commonScorerNum, double commonAver, String workName, String rank, String epNum, String date) {
         this.itemsID = itemsID;
         this.VIBScorerNum = VIBScorerNum;
         this.VIBAver = VIBAver;
@@ -19,8 +20,10 @@ public class RankItemsInfo {
         this.commonAver = commonAver;
         this.workName = workName;
         this.rank = rank;
+        this.epNum = epNum;
         this.date = date;
     }
+
 
     public int getItemsID() {
         return itemsID;
@@ -76,6 +79,14 @@ public class RankItemsInfo {
 
     public void setRank(String rank) {
         this.rank = rank;
+    }
+
+    public String getEpNum() {
+        return epNum;
+    }
+
+    public void setEpNum(String epNum) {
+        this.epNum = epNum;
     }
 
     public String getDate() {

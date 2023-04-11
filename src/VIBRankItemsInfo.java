@@ -4,8 +4,8 @@ public class VIBRankItemsInfo extends RankItemsInfo{
     public VIBRankItemsInfo() {
     }
 
-    public VIBRankItemsInfo(int itemsID, int VIBScorerNum, double VIBAver, int commonScorerNum, double commonAver, String workName, String rank, String date, double weightedAverVIB) {
-        super(itemsID, VIBScorerNum, VIBAver, commonScorerNum, commonAver, workName, rank, date);
+    public VIBRankItemsInfo(int itemsID, int VIBScorerNum, double VIBAver, int commonScorerNum, double commonAver, String workName, String rank, String epNum, String date, double weightedAverVIB) {
+        super(itemsID, VIBScorerNum, VIBAver, commonScorerNum, commonAver, workName, rank, epNum, date);
         this.weightedAverVIB = weightedAverVIB;
     }
 
