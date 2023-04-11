@@ -15,6 +15,10 @@ import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ *TODO:
+ *    作品均分和VIB均分均有错误！！！
+ */
 
 public class Main {
 
