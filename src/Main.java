@@ -12,6 +12,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -35,43 +37,25 @@ public class Main {
     static ArrayList<Object> singleItemsList = new ArrayList<>();
     static ArrayList<Object> commonMarkList = new ArrayList<>();
     private static final ArrayList<ItemsInfo> objectItemsList = new ArrayList<>();
+    private static int insertTargetIndex = -1;
+    private static boolean reachTarget = false;
 
     public static void main(String[] args) throws Exception {
 
         String uid = checkin();
 //        String uid = "756774"; //todo:输入用户UID
-        System.out.println("请输入进行访问的Cookie和User-Agent:");
-        Scanner scCookie = new Scanner(System.in);
-        String cookie = scCookie.nextLine();
-        Scanner scUserAgent = new Scanner(System.in);
-        String userAgent = scUserAgent.nextLine();
 
-        SSLContext sslContext = SSLContext.getInstance("TLS");
-        TrustManager[] trustManagers = new X509TrustManager[]{new X509TrustManager() {
-            @Override
-            public void checkClientTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
-            }
+        // 选择爬取模式
+        modeChoose(uid);
 
-            @Override
-            public void checkServerTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
-                // 检查证书是否过期等其他方面的问题，为了简单起见，这里默认信任所有证书
-            }
-
-            @Override
-            public X509Certificate[] getAcceptedIssuers() {
-                return null;
-            }
-        }};
-
-        sslContext.init(null, trustManagers, null);
-
+        WebConfigs webConfigs = webConfigs();
 
         URL url = new URL("https://bgm.tv/anime/list/" + uid + "/collect?page=1"); //TODO: 请在开发完成后将此行删除，并将此行的前两行注释取消。
         HttpsURLConnection connection = (HttpsURLConnection) url.openConnection(); //
 
         HttpsURLConnection.setFollowRedirects(true);
         connection.setRequestProperty("Cookie", "");
-        connection.setSSLSocketFactory(sslContext.getSocketFactory());
+        connection.setSSLSocketFactory(webConfigs.sslContext().getSocketFactory());
         connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36");
         connection.setDoInput(true);
 
@@ -125,7 +109,7 @@ public class Main {
 //        fileWriter();
 
         //访问所有条目所处的站点，爬取条目评分人数、作品排名，并计算该条目的平均分
-        itemsErgodic(cookie, userAgent);
+        itemsErgodic(webConfigs.cookie(), webConfigs.userAgent());
 
         //获取此用户的注册时间
         String regDate = getRegDate(uid);
@@ -139,6 +123,43 @@ public class Main {
         //将所有信息输出保存为.csv格式
         takeOutCSV(uid, regDate);
 
+    }
+
+    private static WebConfigs webConfigs() throws NoSuchAlgorithmException, KeyManagementException {
+        System.out.println("请输入进行访问的Cookie和User-Agent:");
+        Scanner scCookie = new Scanner(System.in);
+        String cookie = scCookie.nextLine();
+        Scanner scUserAgent = new Scanner(System.in);
+        String userAgent = scUserAgent.nextLine();
+
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        TrustManager[] trustManagers = new X509TrustManager[]{new X509TrustManager() {
+            @Override
+            public void checkClientTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
+            }
+
+            @Override
+            public void checkServerTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
+                // 检查证书是否过期等其他方面的问题，为了简单起见，这里默认信任所有证书
+            }
+
+            @Override
+            public X509Certificate[] getAcceptedIssuers() {
+                return null;
+            }
+        }};
+
+        sslContext.init(null, trustManagers, null);
+        return new WebConfigs(cookie, userAgent, sslContext);
+    }
+
+    private record WebConfigs(String cookie, String userAgent, SSLContext sslContext) {
+    }
+
+    private static void modeChoose(String uid) throws IOException {
+        InsertMode insertMode = new InsertMode();
+        insertMode.modeChoose();
+        insertTargetIndex = insertMode.getTargetIndex(uid);
     }
 
     public static String checkin() {
@@ -189,32 +210,42 @@ public class Main {
         Matcher collectedDateMatcher = collectedDatePattern.matcher(line);
         Matcher commentMatcher = commentPattern.matcher(line);
 
-        while (matcher.find()) {
-            totalItemsList.add(Integer.valueOf(matcher.group().substring(matcher.group().indexOf("_") + 1)));
-        }
-        while (userScoreMatcher.find()) {
-            totalItemsList.remove(totalItemsList.size() - 1);
-            totalItemsList.add(userScoreMatcher.group().substring(userScoreMatcher.group().lastIndexOf("s") + 1));
-            scoreMarker--;
-        }
-        while (titleMatcher.find()) {
-            totalItemsList.add(titleMatcher.group().substring(titleMatcher.group().indexOf(">") + 1, titleMatcher.group().lastIndexOf("<")));
-            scoreMarker++;
-        }
-        if (scoreMarker == 1) {
-            totalItemsList.add("-");
-        }
-        while (collectedDateMatcher.find()) {
-            totalItemsList.add(collectedDateMatcher.group().substring(collectedDateMatcher.group().indexOf(">") + 1, collectedDateMatcher.group().lastIndexOf("<")));
-            commentMarker++;
-        }
-        if (commentMarker == 1) {
-            totalItemsList.add("*");
-        }
-        while (commentMatcher.find()) {
-            totalItemsList.remove(totalItemsList.size() - 1);
-            totalItemsList.add(commentMatcher.group().substring(commentMatcher.group().indexOf(">") + 1, commentMatcher.group().lastIndexOf("<")));
-            commentMarker--;
+        // 如果是插入模式，且未到达目标条目，将所有条目ID加入totalItemsList
+        if (!reachTarget || InsertMode.modeChooseInput == 1) {
+
+            while (matcher.find()) {
+                int itemID = Integer.parseInt(matcher.group().substring(matcher.group().indexOf("_") + 1));
+                totalItemsList.add(itemID);
+                if (itemID == insertTargetIndex) {
+                    reachTarget = true;
+                    break;
+                }
+
+            }
+            while (userScoreMatcher.find()) {
+                totalItemsList.remove(totalItemsList.size() - 1);
+                totalItemsList.add(userScoreMatcher.group().substring(userScoreMatcher.group().lastIndexOf("s") + 1));
+                scoreMarker--;
+            }
+            while (titleMatcher.find()) {
+                totalItemsList.add(titleMatcher.group().substring(titleMatcher.group().indexOf(">") + 1, titleMatcher.group().lastIndexOf("<")));
+                scoreMarker++;
+            }
+            if (scoreMarker == 1) {
+                totalItemsList.add("-");
+            }
+            while (collectedDateMatcher.find()) {
+                totalItemsList.add(collectedDateMatcher.group().substring(collectedDateMatcher.group().indexOf(">") + 1, collectedDateMatcher.group().lastIndexOf("<")));
+                commentMarker++;
+            }
+            if (commentMarker == 1) {
+                totalItemsList.add("*");
+            }
+            while (commentMatcher.find()) {
+                totalItemsList.remove(totalItemsList.size() - 1);
+                totalItemsList.add(commentMatcher.group().substring(commentMatcher.group().indexOf(">") + 1, commentMatcher.group().lastIndexOf("<")));
+                commentMarker--;
+            }
         }
     }
 
@@ -250,6 +281,7 @@ public class Main {
         return getPageNum;
     }
 
+    // TODO IMPORTANT METHOD
     public static void itemsErgodic(String cookie, String userAgent) throws Exception {
 
         //访问所有条目所处的站点，爬取条目评分人数，计算该条目的平均分
@@ -371,30 +403,62 @@ public class Main {
         }
     }
 
-    public static void takeOutCSV(String uid, String regDate) {
+    public static void takeOutCSV(String uid, String regDate) throws IOException {
 
         System.out.println("------------------------------------------------");
+        if (InsertMode.modeChooseInput == 2) {
+            System.out.println("插入模式已开启，将在表格中插入此人未收录的条目信息。");
+        }
         System.out.println("是否需要输出.csv格式的表格？ 是请输入Y(y)，否请输入N(n)。");
         Scanner sc = new Scanner(System.in);
         String takeOutJudge = sc.next().toUpperCase();
         if (takeOutJudge.equals("Y")) {
             String fileName = ".\\" + uid + ".csv";
             Path path = Paths.get(fileName);
-            try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path)) {
-                bufferedWriter.write("");
-            } catch (IOException ex) {
-                throw new RuntimeException(ex);
-            }
-            try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path, StandardCharsets.UTF_8, StandardOpenOption.APPEND)) {
-                bufferedWriter.write("用户:" + uid + "," + "加入时间:" + regDate + "\n");
-                bufferedWriter.write("作品名,作品ID,此人打分,作品均分,收藏时间,作品排名,作品评分人数,VIB评分人数,VIB均分,此人评论,\n");
-                for (ItemsInfo itemsInfo : objectItemsList) {
-                    bufferedWriter.write(itemsInfo.getWorkName() + "," + itemsInfo.getID() + "," + itemsInfo.getUserScore() + ","
-                            + itemsInfo.getWorkAverage() + "," + itemsInfo.getCollectedDate() + "," + itemsInfo.getWorkRanking() + ","
-                            + itemsInfo.getScorerNum() + "," + itemsInfo.getVIBScorerNum() + "," + itemsInfo.getVIBAverage() + "," + itemsInfo.getUserComment() + "\n");
+            if (InsertMode.modeChooseInput == 1) {
+                try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path)) {
+                    bufferedWriter.write("");
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
                 }
-            } catch (IOException ex) {
-                throw new RuntimeException(ex);
+            }
+            if (InsertMode.modeChooseInput == 1) {
+                try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path, StandardCharsets.UTF_8, StandardOpenOption.APPEND)) {
+                    bufferedWriter.write("用户:" + uid + "," + "加入时间:" + regDate + "\n");
+                    bufferedWriter.write("作品名,作品ID,此人打分,作品均分,收藏时间,作品排名,作品评分人数,VIB评分人数,VIB均分,此人评论,\n");
+                    for (ItemsInfo itemsInfo : objectItemsList) {
+                        bufferedWriter.write(itemsInfo.getWorkName() + "," + itemsInfo.getID() + "," + itemsInfo.getUserScore() + ","
+                                + itemsInfo.getWorkAverage() + "," + itemsInfo.getCollectedDate() + "," + itemsInfo.getWorkRanking() + ","
+                                + itemsInfo.getScorerNum() + "," + itemsInfo.getVIBScorerNum() + "," + itemsInfo.getVIBAverage() + "," + itemsInfo.getUserComment() + "\n");
+                    }
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
+            } else if (InsertMode.modeChooseInput == 2) {   // 插入模式
+                // 将文件中的全部内容按行读取：
+                ArrayList<String> fileContent = new ArrayList<>();
+                try (BufferedReader bufferedReader = Files.newBufferedReader(path)) {
+                    String line;
+                    while ((line = bufferedReader.readLine()) != null) {
+                        fileContent.add(line);
+                    }
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
+                // 将objectItemsList中的内容插入到集合fileContent的第三个元素处
+                for (int i = objectItemsList.size() - 1; i >= 0; i--) {
+                    fileContent.add(2, objectItemsList.get(i).getWorkName() + "," + objectItemsList.get(i).getID() + "," + objectItemsList.get(i).getUserScore() + ","
+                            + objectItemsList.get(i).getWorkAverage() + "," + objectItemsList.get(i).getCollectedDate() + "," + objectItemsList.get(i).getWorkRanking() + ","
+                            + objectItemsList.get(i).getScorerNum() + "," + objectItemsList.get(i).getVIBScorerNum() + "," + objectItemsList.get(i).getVIBAverage() + "," + objectItemsList.get(i).getUserComment());
+                }
+                // 将集合中的内容写入文件
+                try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
+                    for (String s : fileContent) {
+                        bufferedWriter.write(s + "\n");
+                    }
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
             }
 
         } else if (!takeOutJudge.equals("N")) {
