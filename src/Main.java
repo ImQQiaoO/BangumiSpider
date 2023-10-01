@@ -1,4 +1,7 @@
 import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -9,6 +12,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.Vector;
@@ -16,7 +21,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- *TODO:
+ * TODO:
  *    作品均分和VIB均分均有错误！！！
  */
 
@@ -41,13 +46,34 @@ public class Main {
         Scanner scUserAgent = new Scanner(System.in);
         String userAgent = scUserAgent.nextLine();
 
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        TrustManager[] trustManagers = new X509TrustManager[]{new X509TrustManager() {
+            @Override
+            public void checkClientTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
+            }
+
+            @Override
+            public void checkServerTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
+                // 检查证书是否过期等其他方面的问题，为了简单起见，这里默认信任所有证书
+            }
+
+            @Override
+            public X509Certificate[] getAcceptedIssuers() {
+                return null;
+            }
+        }};
+
+        sslContext.init(null, trustManagers, null);
+
+
         URL url = new URL("https://bgm.tv/anime/list/" + uid + "/collect?page=1"); //TODO: 请在开发完成后将此行删除，并将此行的前两行注释取消。
         HttpsURLConnection connection = (HttpsURLConnection) url.openConnection(); //
 
         HttpsURLConnection.setFollowRedirects(true);
-//        connection.setRequestProperty("Cookie","");
-//        connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36");
-//        connection.setDoInput(true);
+        connection.setRequestProperty("Cookie", "");
+        connection.setSSLSocketFactory(sslContext.getSocketFactory());
+        connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36");
+        connection.setDoInput(true);
 
         BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream()));
         String line = null;
@@ -514,4 +540,5 @@ public class Main {
             }
         }
     }
+
 }
