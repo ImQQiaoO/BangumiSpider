@@ -9,12 +9,14 @@ public class ItemsInfo {
     private int scorerNum;
     private int VIBScorerNum;
     private double VIBAverage;
+    private String releaseDate;
 
     public ItemsInfo() {
     }
 
     public ItemsInfo(int ID, String workName, String userScore, String collectedDate, String userComment,
-                     String workRanking, double workAverage, int scorerNum, int VIBScorerNum, double VIBAverage) {
+                     String workRanking, double workAverage, int scorerNum, int VIBScorerNum, double VIBAverage
+            , String releaseDate) {
         this.ID = ID;
         this.workName = workName;
         this.userScore = userScore;
@@ -25,6 +27,7 @@ public class ItemsInfo {
         this.scorerNum = scorerNum;
         this.VIBScorerNum = VIBScorerNum;
         this.VIBAverage = VIBAverage;
+        this.releaseDate = releaseDate;
     }
 
     public int getID() {
@@ -105,5 +108,13 @@ public class ItemsInfo {
 
     public void setVIBAverage(double VIBAverage) {
         this.VIBAverage = VIBAverage;
+    }
+
+    public String getReleaseDate() {
+        return releaseDate;
+    }
+
+    public void setReleaseDate(String releaseDate) {
+        this.releaseDate = releaseDate;
     }
 }

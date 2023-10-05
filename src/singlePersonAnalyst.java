@@ -39,7 +39,7 @@ public class singlePersonAnalyst {
         InputStreamReader inputStreamReader = new InputStreamReader(fileInputStream);
         BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
         String strLine;
-        String[] singleItems = new String[10];
+        String[] singleItems = new String[11];
         int lineCnt = 0;
         while ((strLine = bufferedReader.readLine()) != null) {
             lineCnt++;
@@ -55,8 +55,8 @@ public class singlePersonAnalyst {
 //                for (String singleItem : singleItems) {
 //                    System.out.println(singleItem);
 //                }
-                ItemsInfo itemsInfo = new ItemsInfo(Integer.parseInt(singleItems[1]), singleItems[0], singleItems[2], singleItems[5], singleItems[9],
-                        singleItems[6], Double.parseDouble(singleItems[3]), Integer.parseInt(singleItems[7]), Integer.parseInt(singleItems[8]), Double.parseDouble(singleItems[4]));
+                ItemsInfo itemsInfo = new ItemsInfo(Integer.parseInt(singleItems[1]), singleItems[0], singleItems[2], singleItems[4], singleItems[10],
+                        singleItems[6], Double.parseDouble(singleItems[3]), Integer.parseInt(singleItems[7]), Integer.parseInt(singleItems[8]), Double.parseDouble(singleItems[9]), singleItems[5]);
                 itemsInfoList.add(itemsInfo);
             }
 

@@ -22,10 +22,6 @@ import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * TODO:
- *    作品均分和VIB均分均有错误！！！
- */
 
 public class Main {
 
@@ -36,6 +32,7 @@ public class Main {
     private static final ArrayList<Object> totalItemsList = new ArrayList<>();
     static ArrayList<Object> singleItemsList = new ArrayList<>();
     static ArrayList<Object> commonMarkList = new ArrayList<>();
+    private static final ArrayList<Object> releaseDateList = new ArrayList<>();
     private static final ArrayList<ItemsInfo> objectItemsList = new ArrayList<>();
     private static int insertTargetIndex = -1;
     private static boolean reachTarget = false;
@@ -67,16 +64,19 @@ public class Main {
         String titleRegex = "<a href=\"/subject/\\d{0,6}\" class=\"l\">.+</a>";
         String collectedDateRegex = "<span class=\"tip_j\">.{8,10}</span>";
         String commentRegex = "<div class=\"text\"> .*</div>";
+        // 添加：获取该条目的上映日期
+        String releaseDateRegex = ".*/ .* </p>";
 
         Pattern pattern = Pattern.compile(itemRegex);
         Pattern userScorePattern = Pattern.compile(userScoreRegex);
         Pattern titlePattern = Pattern.compile(titleRegex);
         Pattern collectedDatePattern = Pattern.compile(collectedDateRegex);
         Pattern commentPattern = Pattern.compile(commentRegex);
+        Pattern releaseDatePattern = Pattern.compile(releaseDateRegex);
 
         while ((line = br.readLine()) != null) {
 
-            listsAdder(pattern, userScorePattern, titlePattern, collectedDatePattern, commentPattern, line);
+            listsAdder(pattern, userScorePattern, titlePattern, collectedDatePattern, commentPattern, releaseDatePattern, line);
 
             if (line.startsWith("</li></ul><div id=\"multipage\"><div class=\"page_inner\"><strong class=\"p_cur\">1</strong>")) {
                 pageNum = maxPageFinder(line);
@@ -96,7 +96,7 @@ public class Main {
                 br = new BufferedReader(new InputStreamReader(connection.getInputStream()));
                 while ((line = br.readLine()) != null) {
 
-                    listsAdder(pattern, userScorePattern, titlePattern, collectedDatePattern, commentPattern, line);
+                    listsAdder(pattern, userScorePattern, titlePattern, collectedDatePattern, commentPattern,releaseDatePattern, line);
 
                     if (line.startsWith("</li></ul><div id=\"multipage\"><div class=\"page_inner\"><strong class=\"p_cur\">1</strong>")) {
                         pageNum = maxPageFinder(line);
@@ -200,7 +200,7 @@ public class Main {
     }
 
     public static void listsAdder(Pattern pattern, Pattern userScorePattern, Pattern titlePattern, Pattern collectedDatePattern,
-                                  Pattern commentPattern, String line) {
+                                  Pattern commentPattern, Pattern releaseDatePattern, String line) {
 
         int scoreMarker = 0;
         int commentMarker = 0;
@@ -209,6 +209,7 @@ public class Main {
         Matcher titleMatcher = titlePattern.matcher(line);
         Matcher collectedDateMatcher = collectedDatePattern.matcher(line);
         Matcher commentMatcher = commentPattern.matcher(line);
+        Matcher releaseDateMatcher = releaseDatePattern.matcher(line);
 
         // 如果是插入模式，且未到达目标条目，将所有条目ID加入totalItemsList
         if (!reachTarget || InsertMode.modeChooseInput == 1) {
@@ -245,6 +246,23 @@ public class Main {
                 totalItemsList.remove(totalItemsList.size() - 1);
                 totalItemsList.add(commentMatcher.group().substring(commentMatcher.group().indexOf(">") + 1, commentMatcher.group().lastIndexOf("<")));
                 commentMarker--;
+            }
+            while (releaseDateMatcher.find()) {
+                String dateContent = releaseDateMatcher.group().replace(" ", "").replace("</p>", "");
+                System.out.println(dateContent);
+//                String epNum;
+//                if (dateContent.contains("话")) {
+//                    epNum = dateContent.substring(0, dateContent.indexOf("话") + 1);
+//                    dateContent = dateContent.substring(dateContent.indexOf("/") + 1);
+//                } else {
+//                    epNum = "--话";
+//                }
+                if (dateContent.contains("/")) {
+                    dateContent = dateContent.split("/")[1];
+                }
+//                totalItemsList.add(epNum);
+                // 获取到该条目的上映日期，直接创建一个新的List专门存储此条目
+                releaseDateList.add(dateContent);
             }
         }
     }
@@ -381,7 +399,7 @@ public class Main {
                     (String) totalItemsList.get(TOTAL_ITEMS_CATEGORY_COUNTER * i + 3), (String) totalItemsList.get(TOTAL_ITEMS_CATEGORY_COUNTER * i + 4),
                     (String) singleItemsList.get(SINGLE_ITEMS_CATEGORY_COUNTER * i), (Double) singleItemsList.get(SINGLE_ITEMS_CATEGORY_COUNTER * i + 1),
                     (int) singleItemsList.get(SINGLE_ITEMS_CATEGORY_COUNTER * i + 2), (int) singleItemsList.get(SINGLE_ITEMS_CATEGORY_COUNTER * i + 3),
-                    (Double) singleItemsList.get(SINGLE_ITEMS_CATEGORY_COUNTER * i + 4));
+                    (Double) singleItemsList.get(SINGLE_ITEMS_CATEGORY_COUNTER * i + 4), (String) releaseDateList.get(i));
             objectItemsList.add(itemsInfo);
         }
     }
@@ -395,6 +413,7 @@ public class Main {
             System.out.print("此人打分:" + itemsInfo.getUserScore() + "\t");
             System.out.print("作品均分:" + itemsInfo.getWorkAverage() + "\t");
             System.out.print("收藏时间:" + itemsInfo.getCollectedDate() + "\t");
+            System.out.print("上映时间:" + itemsInfo.getReleaseDate() + "\t");
             System.out.print("作品排名:" + itemsInfo.getWorkRanking() + "\t");
             System.out.print("作品评分人数:" + itemsInfo.getScorerNum() + "\t");
             System.out.print("VIB评分人数:" + itemsInfo.getVIBScorerNum() + "\t");
@@ -425,10 +444,10 @@ public class Main {
             if (InsertMode.modeChooseInput == 1) {
                 try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path, StandardCharsets.UTF_8, StandardOpenOption.APPEND)) {
                     bufferedWriter.write("用户:" + uid + "," + "加入时间:" + regDate + "\n");
-                    bufferedWriter.write("作品名,作品ID,此人打分,作品均分,收藏时间,作品排名,作品评分人数,VIB评分人数,VIB均分,此人评论,\n");
+                    bufferedWriter.write("作品名,作品ID,此人打分,作品均分,收藏时间,上映时间,作品排名,作品评分人数,VIB评分人数,VIB均分,此人评论,\n");
                     for (ItemsInfo itemsInfo : objectItemsList) {
                         bufferedWriter.write(itemsInfo.getWorkName() + "," + itemsInfo.getID() + "," + itemsInfo.getUserScore() + ","
-                                + itemsInfo.getWorkAverage() + "," + itemsInfo.getCollectedDate() + "," + itemsInfo.getWorkRanking() + ","
+                                + itemsInfo.getWorkAverage() + "," + itemsInfo.getCollectedDate() + "," + itemsInfo.getReleaseDate() + "," + itemsInfo.getWorkRanking() + ","
                                 + itemsInfo.getScorerNum() + "," + itemsInfo.getVIBScorerNum() + "," + itemsInfo.getVIBAverage() + "," + itemsInfo.getUserComment() + "\n");
                     }
                 } catch (IOException ex) {
@@ -448,7 +467,7 @@ public class Main {
                 // 将objectItemsList中的内容插入到集合fileContent的第三个元素处
                 for (int i = objectItemsList.size() - 1; i >= 0; i--) {
                     fileContent.add(2, objectItemsList.get(i).getWorkName() + "," + objectItemsList.get(i).getID() + "," + objectItemsList.get(i).getUserScore() + ","
-                            + objectItemsList.get(i).getWorkAverage() + "," + objectItemsList.get(i).getCollectedDate() + "," + objectItemsList.get(i).getWorkRanking() + ","
+                            + objectItemsList.get(i).getWorkAverage() + "," + objectItemsList.get(i).getCollectedDate() + "," + objectItemsList.get(i).getReleaseDate() + "," + objectItemsList.get(i).getWorkRanking() + ","
                             + objectItemsList.get(i).getScorerNum() + "," + objectItemsList.get(i).getVIBScorerNum() + "," + objectItemsList.get(i).getVIBAverage() + "," + objectItemsList.get(i).getUserComment());
                 }
                 // 将集合中的内容写入文件
