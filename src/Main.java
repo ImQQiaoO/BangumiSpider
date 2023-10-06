@@ -96,7 +96,7 @@ public class Main {
                 br = new BufferedReader(new InputStreamReader(connection.getInputStream()));
                 while ((line = br.readLine()) != null) {
 
-                    listsAdder(pattern, userScorePattern, titlePattern, collectedDatePattern, commentPattern,releaseDatePattern, line);
+                    listsAdder(pattern, userScorePattern, titlePattern, collectedDatePattern, commentPattern, releaseDatePattern, line);
 
                     if (line.startsWith("</li></ul><div id=\"multipage\"><div class=\"page_inner\"><strong class=\"p_cur\">1</strong>")) {
                         pageNum = maxPageFinder(line);
@@ -257,9 +257,19 @@ public class Main {
 //                } else {
 //                    epNum = "--话";
 //                }
-                if (dateContent.contains("/")) {
-                    dateContent = dateContent.split("/")[1];
+                String[] dateContentArr = dateContent.split("/");
+                // 检查dateContent中是否含有四个数字的年份
+                String yearRegex0 = "\\d{4}年.*";
+                String yearRegex1 = "\\d{4}/.*";
+                String yearRegex2 = "\\d{4}-.*";
+                for (String s : dateContentArr) {
+                    // 如果第i个元素中含有四个数字的年份，则将其作为上映日期
+                    if (s.matches(yearRegex0) || s.matches(yearRegex1) || s.matches(yearRegex2)) {
+                        dateContent = s;
+                        break;
+                    }
                 }
+                System.out.println(dateContent);
 //                totalItemsList.add(epNum);
                 // 获取到该条目的上映日期，直接创建一个新的List专门存储此条目
                 releaseDateList.add(dateContent);
@@ -299,7 +309,6 @@ public class Main {
         return getPageNum;
     }
 
-    // TODO IMPORTANT METHOD
     public static void itemsErgodic(String cookie, String userAgent) throws Exception {
 
         //访问所有条目所处的站点，爬取条目评分人数，计算该条目的平均分
